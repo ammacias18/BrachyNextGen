@@ -1,0 +1,8 @@
+name: basta-env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=2.7
+prefix: /Users/angiemacias/opt/miniconda3/envs/basta-env

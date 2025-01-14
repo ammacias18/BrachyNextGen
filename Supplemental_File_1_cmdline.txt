@@ -1,0 +1,130 @@
+# R code for the publication "More fungi than legs: the first
+# fungal microbiome for a fungus-eating millipede (Colobognatha)"
+# Code authored by Dr. Brian Lovett and Angie Macias
+
+# There are 13 steps given below:
+# 0) activate conda environment and move directories
+# 1.1) AMPtk pre-processing
+# 1.2) AMPtk low read dropping
+# 2) AMPtk clustering - DADA2
+# 3) AMPtk filtering
+# 4) AMPtk LULU filtering
+# 5) AMPtk taxonomy assignment
+# 6) BIOM-convert
+# 7.1) seqtk
+# 7.2) BLAST-taxup
+# 7.3) BLAST
+# 7.4) BASTA run
+# 7.5) post-BASTA
+
+### Step 0: Activate the amptk conda environment and move directories.
+
+conda activate amptk-env
+cd /Users/angiemacias/Desktop/brachyillumina081221
+
+### Step 1.1 (Pre-Processing) is demuxing (if not already done),
+### removing phiX, removing primers, relabeling headers, and 
+### concatenating all samples together.
+
+amptk illumina -i /Volumes/OneTouch/Kasson_Project_001 --out brachy_miseq_v3 --fwd_primer TCGATGAAGAACGCAGCG --rev_primer ITS4 --trim_len 300 --min_len 150 --reads paired --read_length 300 --rescue_forward on --require_primer on --primer_mismatch 2 --barcode_mismatch 1 --merge_method vsearch --mapping_file /Users/angiemacias/Desktop/brachyillumina081221/brachy_miseq_v3_mapfile.txt
+
+# 1.1: Trims long reads to 300, deletes reads <150, allows
+#      2 primer mismatches and 1 barcode mismatch. Generates
+#      (outname).demux.fq.gz (needed in step 1.2) and 
+#      (outname).mapping_file (needed in step 5). Log contains
+#      some useful data, like reads per sample.
+
+
+### Step 1.2 (low read dropping) simply drops the samples from
+### the dataset with read numbers <5,000.
+
+amptk remove -i /Users/angiemacias/Desktop/brachyillumina081221/brachy_miseq_v3.demux.fq.gz --threshold 5000 --out brachy_miseq_v3_dropped.demux.fq.gz
+
+# 1.2: Drops samples with low read numbers <5,000. Generates
+#      a file with the exact (outname) so the extension must
+#      be specified.
+
+
+### Step 2 (Clustering-DADA2) uses a statistical error
+### model to correct sequence errors, in order to generate
+### ESVs which are automatically binned into OTUs.
+
+amptk dada2 --fastq /Users/angiemacias/Desktop/brachyillumina081221/brachy_miseq_v3_dropped.demux.fq.gz --out brachy_miseq_v3 --min_reads 10 --maxee 1.0 --pct_otu 97 --platform illumina
+
+# 2: Essentially the defaults. Not using UNOISE. Generates an
+#    OTU table and a fasta containing reads for each OTU, all
+#    needed in step 3.
+
+
+### Step 3 (Filtering) uses mock community to filter for 
+### index bleed.
+
+amptk filter --otu_table /Users/angiemacias/Desktop/brachyillumina081221/brachy_miseq_v3.cluster.otu_table.txt --fasta /Users/angiemacias/Desktop/brachyillumina081221/brachy_miseq_v3.cluster.otus.fa --out brachy_miseq_v3 --mock_barcode SynMock --mc synmock --calculate all --normalize n --threshold max --subtract 10 --delimiter tsv --min_reads_otu 2 --min_samples_otu 1 
+
+# 3: Mostly defaults. No normalization, no removing negs. SynMock
+#    dropped. Generates useful statistics, but does not actually
+#    change any files. Dropping 10 reads from every OTU (based on
+#    index bleed %).
+
+
+# Step 4 (LULU) is an optional error-control filtering step.
+# It removes artefactual OTUs without discarding rare but
+# real OTUs.
+
+amptk lulu --otu_table /Users/angiemacias/Desktop/brachyillumina081221/brachy_miseq_v3.final.txt --fasta /Users/angiemacias/Desktop/brachyillumina081221/brachy_miseq_v3.filtered.otus.fa --out brachy_miseq_v3 --min_ratio_type min --min_ratio 1 --min_match 84 --min_relative_cooccurence 95
+
+# 4: Largely default settings. Generates an OTU table and
+#    a fasta containing reads for each OTU, all needed in
+#    step 5.
+
+
+### Step 5 (Taxonomy) first updates the ITS database, then assigns
+### names to OTUs, creating the final BIOM output file.
+
+amptk install -i ITS --force
+
+amptk taxonomy --fasta /Users/angiemacias/Desktop/brachyillumina081221/brachy_miseq_v3.lulu.otus.fa --otu_table /Users/angiemacias/Desktop/brachyillumina081221/brachy_miseq_v3.lulu.otu_table.txt --mapping_file /Users/angiemacias/Desktop/brachyillumina081221/brachy_miseq_v3.mapping_file.txt --db ITS2 --out brachy_miseq_v3 --method hybrid
+
+# 5: Largely default settings. Notably I am using the
+#    default approach using BLAST and UNITE-INSD.
+
+
+### Step 6 (BIOM-convert) uses the program biom-format to convert
+### the BIOM file to a tsv, needed for later steps.
+
+biom convert -i /Users/angiemacias/Desktop/brachyillumina081221/brachy_miseq_v3.biom -o /Users/angiemacias/Desktop/brachyillumina081221/brachy_miseq_v3.biom.txt --to-tsv --header-key taxonomy
+
+
+### Step 7.1 (seqtk) Prior to using BASTA, you must generate a
+### list of OTUs of interest and a FASTA of those OTUs. I did
+### the first part with sorting the tsv from Step 6 above in Excel,
+### and the second part using seqtk code below.
+
+seqtk subseq /Users/angiemacias/Desktop/brachyillumina081221/brachy_miseq_v3.otus.taxonomy.fa /Users/angiemacias/Desktop/brachyillumina081221/OTUsToBastaList.txt > /Users/angiemacias/Desktop/brachyillumina081221/brachy_illumina_v3_BastaFasta.fasta
+
+
+### Step 7.2 (BLAST-taxup) updates the BLAST taxonomy database.
+
+conda activate basta-env
+ktUpdateTaxonomy.sh
+
+
+### Step 7.3 (BLAST) generates the BLAST tab delim file. This
+### actually BLASTS all your sequences and saves the top handful
+### of results in a lengthy file that BASTA will analyze.
+
+/Volumes/OneTouch/usr/local/ncbi/blast/bin/blastn -db nt -query /Users/angiemacias/Desktop/brachyillumina081221/brachy_illumina_v3_BastaFasta.fasta -out /Users/angiemacias/Desktop/BrachyIllumina081221/brachy_illumina_v3_BastaFasta.out -evalue 1e-6 -max_target_seqs 5 -outfmt "6" -remote
+
+
+### Step 7.4 (BASTA) uses the table from 2.3 to choose an LCA
+### for each OTU.
+
+basta sequence /Users/angiemacias/Desktop/BrachyIllumina081221/brachy_illumina_v3_BastaFasta.out brachy_illumina_v3_wTax gb --directory /Volumes/OneTouch/NCBIdatabase040721/taxonomy/
+
+
+### Step 7.5 (post-BASTA) Manually review the BASTA output. 
+### Change kingdom from Eukarya to Metazoa, Fungi, Viridiplantae,
+### etc where appropriate, delete unhelpful taxonomy such as "unknown"
+### or "uncultured fungus".
+
+# Data is now ready for import, processing, & analysis in R.
