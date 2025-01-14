@@ -4,7 +4,7 @@ Code and data for the article titled "More fungi than legs: the first fungal mic
 This repository contains 5 files:
 
 1) An Excel file with the ten supplemental tables from the article above.
-2) A .yml file that allows you to create the amptk conda environment I set up for my analysis.
+2) A .yml file that allows you to create the AMPtk conda environment I set up for my analysis.
 3) A .yml file that allows you to create the BASTA conda environment I set up for my analysis.
 4) Code for analysing raw Illumina data, up through import into R for further analysis.
 5) Code for analysing the output of #4 above in R, including figures.
