@@ -1,5 +1,5 @@
-# R code for the publication "More fungi than legs: the first
-# fungal microbiome for a fungus-eating millipede (Colobognatha)"
+# Command line code for the publication "More fungi than legs:
+# the first fungal microbiome for a fungus-eating millipede (Colobognatha)"
 # Code authored by Dr. Brian Lovett and Angie Macias
 
 # There are 13 steps given below:
