@@ -1,5 +1,5 @@
 # BrachyNextGen
-Code and data for the article titled "More fungi than legs: the first fungal microbiome for a fungus-eating millipede (Colobognatha)".
+Code and data for the article titled "More fungi than legs: the first fungal microbiome for a fungus-eating millipede (Colobognatha)". The paper is available here (preprint): https://www.biorxiv.org/content/10.1101/2024.12.23.629787v1
 
 This repository contains 5 files:
 
